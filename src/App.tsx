@@ -5,7 +5,7 @@ import {
   FlaskConical, Guitar, LibraryBig, Music2, Pause, Play, Plus, RotateCcw, Save,
   Sparkles, Trash2, Upload, Volume2, WandSparkles, X,
 } from 'lucide-react'
-import { exercises, lessons, modules, songCases } from './data/catalog'
+import { exercises, lessonInteractions, lessons, modules, songCases } from './data/catalog'
 import { getKnowledgeForLesson } from './data/knowledge'
 import { useLearning } from './state/LearningContext'
 import { Fretboard, playPitch } from './components/Fretboard'
@@ -26,6 +26,8 @@ import LearningPage from './pages/LearningPage'
 import ToolsPage from './pages/ToolsPage'
 import AdminPage from './pages/AdminPage'
 import { CircleOfFifthsPanel } from './features/theory-lab/CircleOfFifthsPanel'
+import { ExerciseRenderer } from './features/practice/ExerciseRenderer'
+import type { ExerciseResult } from './data/catalog'
 
 function App() {
   return (
@@ -55,6 +57,28 @@ function App() {
 
 // === Pages kept inline due to tight coupling with theory/interaction ===
 
+function LessonExerciseBlock({ lessonId }: { lessonId: string }) {
+  const learning = useLearning()
+  const lessonExercises = exercises.filter((e) => e.lessonId === lessonId).slice(0, 3)
+  const [exIdx, setExIdx] = useState(0)
+  const current = lessonExercises[exIdx]
+  if (!current) return null
+
+  const handleResult = (result: ExerciseResult) => {
+    learning.recordAttempt({ exerciseId: result.exerciseId, lessonId: result.lessonId, correct: result.correct })
+    learning.updateReview(result.lessonId, result.correct)
+  }
+
+  return (
+    <ExerciseRenderer
+      lessonId={lessonId}
+      exercise={current}
+      onResult={handleResult}
+      onNext={() => setExIdx((i) => (i + 1) % lessonExercises.length)}
+    />
+  )
+}
+
 function LessonPage() {
   const { slug } = useParams(); const navigate = useNavigate(); const learning = useLearning()
   const lesson = lessons.find((l) => l.slug === slug)
@@ -67,8 +91,8 @@ function LessonPage() {
   const moduleLessons = lessons.filter((l) => l.moduleId === lesson.moduleId)
   const globalIndex = lessons.indexOf(lesson)
   const next = lessons[globalIndex + 1]
-  // 优先从课程数据读取交互配置，否则使用旧版模块推断
-  const interaction = lesson.interaction
+  // 优先从课程数据读取交互配置，否则使用 lessonInteractions 映射
+  const interaction = lesson.interaction ?? lessonInteractions[lesson.id]
   const fretDemo = interaction?.fretboardDemos?.[0]
   const highlighted = fretDemo?.highlightedNotes ?? (lesson.moduleId === 'scale' ? getScaleNotes(lesson.id === 'minor-scale' || lesson.id === 'pentatonic' ? 'A' : 'C', lesson.id === 'pentatonic' ? 'minorPentatonic' : lesson.id === 'minor-scale' ? 'naturalMinor' : 'major') : lesson.moduleId === 'interval' ? ['C', 'E', 'G'] : [lesson.moduleId === 'fretboard' ? 'E' : 'C'])
   const root = fretDemo?.root ?? (lesson.moduleId === 'scale' && lesson.id !== 'major-scale' ? 'A' : lesson.moduleId === 'fretboard' ? 'E' : 'C')
@@ -80,7 +104,7 @@ function LessonPage() {
     { label: '乐理解释', content: <section className="step-panel"><span className="overline">从规律推导</span><h2>{lesson.sections[0].title}</h2><p>{lesson.sections[0].content}</p><div className="formula-card"><span>核心公式</span><b>{lesson.formula}</b></div></section> },
     { label: '指板验证', content: <section className="step-panel content-wide"><span className="overline">把抽象关系放回吉他</span><h2>在指板上验证</h2><p>{lesson.sections[2].content}</p><Fretboard root={root} notes={highlighted} compact /></section> },
     { label: '吉他案例', content: <section className="step-panel"><span className="overline">真实应用</span><h2>{lesson.sections[1].title}</h2><p>{lesson.sections[1].content}</p><div className="application-callout"><Guitar /><div><b>练琴时这样做</b><span>先说出根音与关系，再弹形状；换一个起点重复推导，确认自己理解的是规律而不是位置。</span></div></div></section> },
-    { label: '即时练习', content: <section className="step-panel content-wide"><span className="overline">用答案验证理解</span><h2>马上检验</h2><InlineQuiz lessonId={lesson.id} exercises={exercises.filter((e) => e.lessonId === lesson.id).slice(0, 3)} /></section> },
+    { label: '即时练习', content: <section className="step-panel content-wide"><span className="overline">用答案验证理解</span><h2>马上检验</h2><LessonExerciseBlock lessonId={lesson.id} /></section> },
     { label: '知识依据', content: <section className="step-panel content-wide"><span className="overline">可追溯知识库</span><h2>本课知识依据</h2><p>正文根据下列教学资料交叉核对后，用面向吉他学习者的中文重新编写；乐理结果同时由规则引擎验证。</p><div className="research-claims">{research.nodes.filter((node) => node.id !== 'kb.sequence.mvp').flatMap((node) => node.claims).map((claim, index) => <div key={`${claim.statement}-${index}`}><Check /><span>{claim.statement}</span></div>)}</div><div className="source-list">{research.sources.map((source, index) => <a href={source.url} target="_blank" rel="noreferrer" key={source.id}><span>[{index + 1}]</span><div><b>{source.title}</b><small>{source.publisher} · {source.license}</small></div><ArrowRight /></a>)}</div></section> },
     { label: '本课总结', content: <section className="lesson-summary step-summary"><div><Check /></div><div><span>本课总结</span><h2>{lesson.summary}</h2><p>下一次拿起吉他时，先说出根音和关系，再让手去完成形状。</p></div></section> },
   ]

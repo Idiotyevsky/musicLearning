@@ -1,16 +1,9 @@
 /**
- * D1 课程数据填充脚本
- *
- * 从 src/data/catalog.ts 读取课程、模块、练习与歌曲案例，生成 SQL INSERT 语句。
- * 生成的 SQL 会覆盖写入 stdout，可直接管道传输给 wrangler d1 execute。
+ * D1 课程数据填充脚本（幂等：ON CONFLICT DO UPDATE）
  *
  * 用法：
- *   # 本地 D1
- *   node scripts/seed-d1.mjs | npx wrangler d1 execute string-theory-db --local --file=/dev/stdin
- *
- *   # 远程 D1（Windows 下可重定向到临时文件）
- *   node scripts/seed-d1.mjs > seed.sql
- *   npx wrangler d1 execute string-theory-db --remote --file=seed.sql
+ *   node scripts/seed-d1.mjs
+ *   npx wrangler d1 execute string-theory-db --local --file=seed.sql
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import ts from 'typescript'
@@ -34,14 +27,15 @@ const { modules, lessons, exercises, songCases } = await importTypeScript(
 
 const lines = []
 
-lines.push('-- 弦上乐理 D1 种子数据')
+lines.push('-- 弦上乐理 D1 种子数据（幂等：ON CONFLICT DO UPDATE）')
 lines.push('-- 生成时间：' + new Date().toISOString())
+lines.push('BEGIN TRANSACTION;')
 lines.push('')
 
-// course_modules
+// course_modules（父表优先）
 for (const m of modules) {
   lines.push(
-    `INSERT OR REPLACE INTO course_modules (id, slug, title, description, order_index, status) VALUES (${esc(m.id)}, ${esc(m.id)}, ${esc(m.title)}, ${esc(m.subtitle)}, ${m.index}, 'published');`,
+    `INSERT INTO course_modules (id, slug, title, description, order_index, status) VALUES (${esc(m.id)}, ${esc(m.id)}, ${esc(m.title)}, ${esc(m.subtitle)}, ${m.index}, 'published') ON CONFLICT(id) DO UPDATE SET slug=excluded.slug, title=excluded.title, description=excluded.description, order_index=excluded.order_index, status=excluded.status;`,
   )
 }
 lines.push('')
@@ -55,22 +49,22 @@ for (const l of lessons) {
     quiz: l.quiz,
   })
   lines.push(
-    `INSERT OR REPLACE INTO lessons (id, module_id, slug, title, summary, level, estimated_minutes, content_json, order_index, status, version, created_at, updated_at) VALUES (${esc(l.id)}, ${esc(l.moduleId)}, ${esc(l.slug)}, ${esc(l.title)}, ${esc(l.summary)}, 'beginner', ${l.minutes}, ${esc(content)}, ${lessons.indexOf(l)}, 'published', 1, '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z');`,
+    `INSERT INTO lessons (id, module_id, slug, title, summary, level, estimated_minutes, content_json, order_index, status, version, created_at, updated_at) VALUES (${esc(l.id)}, ${esc(l.moduleId)}, ${esc(l.slug)}, ${esc(l.title)}, ${esc(l.summary)}, 'beginner', ${l.minutes}, ${esc(content)}, ${lessons.indexOf(l)}, 'published', 1, '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z') ON CONFLICT(id) DO UPDATE SET slug=excluded.slug, title=excluded.title, summary=excluded.summary, content_json=excluded.content_json, estimated_minutes=excluded.estimated_minutes, updated_at='2026-07-11T00:00:00Z';`,
   )
 }
 lines.push('')
 
-// lesson_prerequisites
+// lesson_prerequisites（不覆盖，只在不存在时插入）
 for (const l of lessons) {
   if (l.prerequisite) {
     lines.push(
-      `INSERT OR REPLACE INTO lesson_prerequisites (lesson_id, prerequisite_lesson_id) VALUES (${esc(l.id)}, ${esc(l.prerequisite)});`,
+      `INSERT INTO lesson_prerequisites (lesson_id, prerequisite_lesson_id) VALUES (${esc(l.id)}, ${esc(l.prerequisite)}) ON CONFLICT(lesson_id, prerequisite_lesson_id) DO NOTHING;`,
     )
   }
 }
 lines.push('')
 
-// exercises
+// exercises（保留真实题型和 metadata）
 for (const e of exercises) {
   const prompt = JSON.stringify({ text: e.prompt, type: e.type })
   const answer = JSON.stringify({ index: e.answer })
@@ -82,7 +76,7 @@ for (const e of exercises) {
     romanAnswer: e.romanAnswer ?? null,
   })
   lines.push(
-    `INSERT OR REPLACE INTO exercises (id, lesson_id, type, prompt_json, answer_json, explanation_json, metadata_json, difficulty, status) VALUES (${esc(e.id)}, ${esc(e.lessonId)}, ${esc(e.type)}, ${esc(prompt)}, ${esc(answer)}, ${esc(explanation)}, ${esc(metadata)}, ${e.difficulty}, 'published');`,
+    `INSERT INTO exercises (id, lesson_id, type, prompt_json, answer_json, explanation_json, metadata_json, difficulty, status) VALUES (${esc(e.id)}, ${esc(e.lessonId)}, ${esc(e.type)}, ${esc(prompt)}, ${esc(answer)}, ${esc(explanation)}, ${esc(metadata)}, ${e.difficulty}, 'published') ON CONFLICT(id) DO UPDATE SET type=excluded.type, prompt_json=excluded.prompt_json, answer_json=excluded.answer_json, explanation_json=excluded.explanation_json, metadata_json=excluded.metadata_json, difficulty=excluded.difficulty, status=excluded.status;`,
   )
 }
 lines.push('')
@@ -98,14 +92,16 @@ for (const s of songCases) {
     tags: s.tags,
   })
   lines.push(
-    `INSERT OR REPLACE INTO song_cases (id, slug, title, artist, key_tonic, key_mode, content_json, status, created_at, updated_at) VALUES (${esc(s.id)}, ${esc(s.id)}, ${esc(s.title)}, ${esc(s.artist)}, ${esc(s.key)}, ${esc(s.mode)}, ${esc(content)}, 'published', '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z');`,
+    `INSERT INTO song_cases (id, slug, title, artist, key_tonic, key_mode, content_json, status, created_at, updated_at) VALUES (${esc(s.id)}, ${esc(s.id)}, ${esc(s.title)}, ${esc(s.artist)}, ${esc(s.key)}, ${esc(s.mode)}, ${esc(content)}, 'published', '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z') ON CONFLICT(id) DO UPDATE SET slug=excluded.slug, title=excluded.title, artist=excluded.artist, key_tonic=excluded.key_tonic, key_mode=excluded.key_mode, content_json=excluded.content_json, status=excluded.status, updated_at='2026-07-11T00:00:00Z';`,
   )
 }
+
+lines.push('')
+lines.push('COMMIT;')
 
 const sql = lines.join('\n')
 console.log(sql)
 
-// 同时写入文件方便 Windows 下使用
 const outPath = 'seed.sql'
 await writeFile(outPath, sql, 'utf8')
 console.error(`\n已写入 ${outPath}（${lines.length} 行 SQL）`)

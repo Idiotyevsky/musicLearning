@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { ArrowRight, Check, Volume2 } from 'lucide-react'
-import { useLearning } from '../state/LearningContext'
 import { playPitch } from './Fretboard'
 import { noteToPitchClass } from '../theory'
 import type { Exercise } from '../data/catalog'
+
+export type ExerciseResult = { exerciseId: string; lessonId: string; correct: boolean }
 
 const EXERCISE_TYPE_LABELS: Record<string, string> = {
   multiple_choice: '选择题', fretboard_click: '指板定位',
   interval_input: '音程计算', roman_numeral_input: '级数分析',
 }
 
-function InlineQuiz({ lessonId, exercises: items }: { lessonId: string; exercises: Exercise[] }) {
-  const learning = useLearning()
+function InlineQuiz({ lessonId, exercises: items, onResult }: {
+  lessonId: string; exercises: Exercise[]; onResult?: (result: ExerciseResult) => void
+}) {
   const [index, setIndex] = useState(0)
   const [chosen, setChosen] = useState<number | null>(null)
   const [submitted, setSubmitted] = useState(false)
@@ -19,9 +21,9 @@ function InlineQuiz({ lessonId, exercises: items }: { lessonId: string; exercise
   if (!item) return null
   const isCorrect = chosen === item.answer
   const submit = () => {
-    if (chosen === null) return
+    if (chosen === null || submitted) return
     setSubmitted(true)
-    learning.recordAttempt({ exerciseId: item.id, lessonId, correct: isCorrect })
+    onResult?.({ exerciseId: item.id, lessonId, correct: isCorrect })
   }
   const next = () => { setIndex((index + 1) % items.length); setChosen(null); setSubmitted(false) }
 

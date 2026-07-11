@@ -97,4 +97,5 @@ app.notFound(async (c) => {
   return c.env.ASSETS.fetch(c.req.raw)
 })
 
+export { app }
 export default app

@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react'
 import { getFretboardPositions, noteToPitchClass, type ScaleType, getScaleNotes } from '../theory'
 
-type Props = { root?: string; notes?: string[]; scaleType?: ScaleType; compact?: boolean }
+export type FretPosition = { stringIndex: number; stringNumber: number; fret: number; note: string; pitchClass: number }
+
+type Props = {
+  root?: string; notes?: string[]; scaleType?: ScaleType; compact?: boolean
+  onNoteClick?: (position: FretPosition) => void
+}
+
 const degreeLabels = ['1', '♭2', '2', '♭3', '3', '4', '♭5', '5', '♭6', '6', '♭7', '7']
 
-export function Fretboard({ root = 'C', notes, scaleType = 'major', compact = false }: Props) {
+export function Fretboard({ root = 'C', notes, scaleType = 'major', compact = false, onNoteClick }: Props) {
   const [mode, setMode] = useState<'note' | 'degree' | 'interval'>('note')
   const activeNotes = notes ?? getScaleNotes(root, scaleType)
   const activePcs = activeNotes.map(noteToPitchClass)
@@ -36,7 +42,7 @@ export function Fretboard({ root = 'C', notes, scaleType = 'major', compact = fa
               key={p.fret} className={`fret ${active ? 'is-active' : ''} ${isRoot && active ? 'is-root' : ''}`}
               aria-label={`${string}弦 ${p.fret}品 ${p.note}`}
               title={`${string}弦 ${p.fret}品 · ${p.note}`}
-              onClick={() => playPitch(p.pitchClass, 3 + Math.floor((6 - string) / 2))}
+              onClick={() => { playPitch(p.pitchClass, 3 + Math.floor((6 - string) / 2)); onNoteClick?.({ stringIndex: string - 1, stringNumber: string, fret: p.fret, note: p.note, pitchClass: p.pitchClass }) }}
             >{active ? nodeLabel(p.note, p.pitchClass) : ''}</button>
           })}
         </div>)}

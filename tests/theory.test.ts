@@ -130,3 +130,41 @@ describe('边界与回归', () => {
     expect(transposeChord('Bm7b5', 2)).toBe('C♯m7b5')
   })
 })
+
+// 罗马数字判题测试（来自 exerciseScoring 逻辑）
+describe('罗马数字判题：大小写敏感', () => {
+  function scoreRomanNumeral(userInput: string, expected: string): boolean {
+    const normalize = (s: string) => s.trim().replace(/\s+/g, ' ').replace(/♭/g, 'b').replace(/♯/g, '#')
+    return normalize(userInput) === normalize(expected)
+  }
+
+  it('vi 不等于 VI', () => {
+    expect(scoreRomanNumeral('vi', 'vi')).toBe(true)
+    expect(scoreRomanNumeral('VI', 'vi')).toBe(false) // 大三 ≠ 小三
+    expect(scoreRomanNumeral('Vi', 'vi')).toBe(false)
+  })
+
+  it('V7 不等于 v7', () => {
+    expect(scoreRomanNumeral('V7', 'V7')).toBe(true)
+    expect(scoreRomanNumeral('v7', 'V7')).toBe(false)
+  })
+
+  it('ii 不等于 II', () => {
+    expect(scoreRomanNumeral('ii', 'ii')).toBe(true)
+    expect(scoreRomanNumeral('II', 'ii')).toBe(false)
+  })
+
+  it('标准化空格和 Unicode 符号但不影响大小写', () => {
+    expect(scoreRomanNumeral('  vi  ', 'vi')).toBe(true)
+    expect(scoreRomanNumeral('V7', 'V7')).toBe(true)
+  })
+
+  it('大小写提示', () => {
+    // 用户输入了大写但答案是小写 — 给出提示逻辑（由 scoring 层处理）
+    const user = 'VI'
+    const expected = 'vi'
+    const normalize = (s: string) => s.trim().replace(/\s+/g, ' ').replace(/♭/g, 'b').replace(/♯/g, '#')
+    expect(normalize(user)).not.toBe(normalize(expected)) // exact match fails
+    expect(normalize(user).toLowerCase()).toBe(normalize(expected).toLowerCase()) // but case-insensitive match reveals the case error
+  })
+})

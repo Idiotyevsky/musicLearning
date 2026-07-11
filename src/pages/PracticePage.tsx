@@ -1,40 +1,57 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import { RotateCcw, Target, TrendingUp } from 'lucide-react'
-import { exercises, lessons, modules } from '../data/catalog'
+import { exercises, lessons, modules, type ExerciseResult } from '../data/catalog'
 import { useLearning } from '../state/LearningContext'
 import { PageShell, StatCard } from '../layout/PageShell'
-import InlineQuiz from '../components/InlineQuiz'
+import { ExerciseRenderer } from '../features/practice/ExerciseRenderer'
 
 function PracticePage() {
   const learning = useLearning()
   const [scope, setScope] = useState<'today' | 'all' | 'mistakes'>('today')
   const [index, setIndex] = useState(0)
-  const missedIds = new Set(learning.attempts.filter((a) => !a.correct).map((a) => a.exerciseId))
+  // 错题：仅取每道题的最新一次结果，只有最新仍错误才算当前错题
+  const missedIds = useMemo(() => {
+    const latestByExercise = new Map<string, boolean>()
+    for (const a of learning.attempts) {
+      latestByExercise.set(a.exerciseId, a.correct)
+    }
+    return new Set(
+      [...latestByExercise.entries()].filter(([, correct]) => !correct).map(([id]) => id),
+    )
+  }, [learning.attempts])
 
   const todayReview = useMemo(() => {
-    // 只从用户已开始或已解锁的课程中选题
-    const accessibleLessonIds = new Set(
-      lessons.filter((l) => !l.prerequisite || learning.completed.includes(l.prerequisite)).map((l) => l.id),
-    )
+    // 只从用户真正学习过的课程中选题（已答题 / 已完成 / 已有复习状态）
+    const attemptedLessonIds = new Set(learning.attempts.map((a) => a.lessonId))
+    const reviewedLessonIds = new Set(Object.keys(learning.reviews))
+    const accessibleLessonIds = new Set([
+      ...attemptedLessonIds,
+      ...learning.completed,
+      ...reviewedLessonIds,
+    ])
     const dueLessonIds = new Set(learning.getDueReviews())
 
-    // 优先级：错题 > 到期复习 > 低掌握度
-    const recentMistakes = exercises.filter(
+    // 优先级组：错题 > 到期复习 > 低掌握度（组间不 shuffle）
+    const group1 = exercises.filter(
       (e) => missedIds.has(e.id) && accessibleLessonIds.has(e.lessonId),
     )
-    const dueExercises = exercises.filter(
+    const group2 = exercises.filter(
       (e) => dueLessonIds.has(e.lessonId) && !missedIds.has(e.id) && accessibleLessonIds.has(e.lessonId),
     )
-    const lowMasteryExercises = exercises.filter(
+    const group3 = exercises.filter(
       (e) => learning.masteryFor(e.lessonId) < 50 && !missedIds.has(e.id) && !dueLessonIds.has(e.lessonId) && accessibleLessonIds.has(e.lessonId),
     )
-    const combined = [...recentMistakes, ...dueExercises, ...lowMasteryExercises]
-    for (let i = combined.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [combined[i], combined[j]] = [combined[j], combined[i]]
+
+    // 组内随机，保持优先级顺序
+    const shuffle = <T extends unknown>(arr: T[]): T[] => {
+      const copy = [...arr]
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]]
+      }
+      return copy
     }
-    return combined.slice(0, 8)
+    return [...shuffle(group1), ...shuffle(group2), ...shuffle(group3)].slice(0, 8)
   }, [learning.attempts, learning.completed, learning.reviews])
 
   const pool = scope === 'mistakes'
@@ -42,7 +59,13 @@ function PracticePage() {
     : scope === 'today'
       ? (todayReview.length ? todayReview : exercises.slice(0, 8))
       : exercises
-  const items = pool.length ? pool : exercises.slice(0, 8)
+  const items = pool.length ? pool : []
+  const currentExercise = items.length ? exercises.find((e) => e.id === items[index % items.length].id) ?? exercises[0] : null
+
+  const handleResult = (result: ExerciseResult) => {
+    learning.recordAttempt({ exerciseId: result.exerciseId, lessonId: result.lessonId, correct: result.correct })
+    learning.updateReview(result.lessonId, result.correct)
+  }
 
   return (
     <PageShell eyebrow="专注练习" title="每一道错题，都是下一课的路标" description="答题后在原位置查看推导，不只知道对错。最近 20 次相关练习将形成你的掌握度。">
@@ -52,15 +75,34 @@ function PracticePage() {
           <button className={scope === 'all' ? 'active' : ''} onClick={() => { setScope('all'); setIndex(0) }}>知识练习</button>
           <button className={scope === 'mistakes' ? 'active' : ''} onClick={() => { setScope('mistakes'); setIndex(0) }}>错题本 <span>{missedIds.size}</span></button>
         </div>
-        <span>{items.length} 道题 · 约 {Math.ceil(items.length / 2)} 分钟</span>
+        <span>{items.length ? `${items.length} 道题 · 约 ${Math.ceil(items.length / 2)} 分钟` : ''}</span>
       </div>
       <div className="practice-stage">
-        <div className="practice-header">
-          <span>{modules.find((m) => m.id === lessons.find((l) => l.id === items[index % items.length].lessonId)?.moduleId)?.title}</span>
-          <b>{(index % items.length) + 1} / {items.length}</b>
-        </div>
-        <InlineQuiz lessonId={items[index % items.length].lessonId} exercises={[items[index % items.length]]} />
-        <button className="next-floating" onClick={() => setIndex((i) => (i + 1) % items.length)}><span>→</span></button>
+        {currentExercise
+          ? (
+            <>
+              <div className="practice-header">
+                <span>{modules.find((m) => m.id === lessons.find((l) => l.id === currentExercise.lessonId)?.moduleId)?.title}</span>
+                <b>{(index % (items.length || 1)) + 1} / {items.length || 1}</b>
+              </div>
+              <ExerciseRenderer
+                lessonId={currentExercise.lessonId}
+                exercise={currentExercise}
+                onResult={handleResult}
+                onNext={() => setIndex((i) => (i + 1) % (items.length || 1))}
+              />
+              <button className="next-floating" onClick={() => setIndex((i) => (i + 1) % (items.length || 1))}>
+                <span>→</span>
+              </button>
+            </>
+            )
+          : (
+            <div className="empty-state">
+              <Target />
+              <h3>今天暂无到期复习</h3>
+              <p>继续学习新课程吧。</p>
+            </div>
+            )}
       </div>
       <div className="practice-stats">
         <StatCard icon={<Target />} value={`${learning.attempts.filter((a) => a.correct).length}`} label="累计答对" />

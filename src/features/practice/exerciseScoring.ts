@@ -42,17 +42,27 @@ export function scoreIntervalInput(exercise: Exercise, userInput: string): Score
   }
 }
 
+// 罗马数字符号标准化（不修改大小写，vi ≠ VI）
+function normalizeRomanSymbols(input: string): string {
+  return input.trim().replace(/\s+/g, ' ').replace(/♭/g, 'b').replace(/♯/g, '#')
+}
+
 export function scoreRomanNumeral(exercise: Exercise, userInput: string): ScoreResult {
-  const trimmed = userInput.trim().toLowerCase()
   const expected = exercise.romanAnswer ?? ''
   if (!expected) return { correct: false, feedback: '题目数据缺少正确答案。' }
 
-  // 大小写不敏感（vi == VI == Vi）
-  const expectedNorm = expected.toLowerCase().replace(/°/g, '°').replace(/ø/g, 'ø')
-  const userNorm = trimmed.replace(/°/g, '°').replace(/ø/g, 'ø')
+  const userNorm = normalizeRomanSymbols(userInput)
+  const expectedNorm = normalizeRomanSymbols(expected)
 
   if (userNorm === expectedNorm) {
     return { correct: true, feedback: '回答正确！' }
+  }
+  // 提供友好提示：如果答案正确但大小写错了
+  if (userNorm.toLowerCase() === expectedNorm.toLowerCase()) {
+    return {
+      correct: false,
+      feedback: `罗马数字的大小写表示和弦性质（大三/小三）。正确答案是「${expected}」。${exercise.explanation}`,
+    }
   }
   return {
     correct: false,

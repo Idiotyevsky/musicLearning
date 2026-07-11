@@ -7,7 +7,7 @@ async function importTypeScript(path) {
   return import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`)
 }
 
-const { lessons, modules, exercises, songCases } = await importTypeScript(new URL('../src/data/catalog.ts', import.meta.url))
+const { lessons, modules, exercises, songCases, lessonInteractions } = await importTypeScript(new URL('../src/data/catalog.ts', import.meta.url))
 const { knowledgeNodes, knowledgeSources } = await importTypeScript(new URL('../src/data/knowledge.ts', import.meta.url))
 const theory = await importTypeScript(new URL('../src/theory/index.ts', import.meta.url))
 const errors = []
@@ -69,6 +69,20 @@ function visit(id) {
   visiting.delete(id); visited.add(id)
 }
 lessons.forEach((l) => visit(l.id))
+
+// 交互数据校验
+for (const lesson of lessons) {
+  const hasInteraction = lesson.interaction || lessonInteractions?.[lesson.id]
+  if (!hasInteraction) errors.push(`${lesson.id}: 发布课程缺少交互配置（audioDemos/fretboardDemos）`)
+  else {
+    const audioCount = (hasInteraction.audioDemos ?? []).length
+    const fretCount = (hasInteraction.fretboardDemos ?? []).length
+    if (audioCount === 0 && fretCount === 0) errors.push(`${lesson.id}: 交互配置为空（至少需要一个 audio 或 fretboard 演示）`)
+    for (const demo of (hasInteraction.audioDemos ?? [])) {
+      if (!demo.notes?.length) errors.push(`${lesson.id}/audio/${demo.id}: notes 不能为空`)
+    }
+  }
+}
 
 if (errors.length) {
   console.error(`内容校验失败（${errors.length} 项）\n${errors.map((e) => `- ${e}`).join('\n')}`)

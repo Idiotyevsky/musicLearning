@@ -13,6 +13,8 @@ export type FretboardDemo = {
 export type LessonInteraction = { audioDemos: AudioDemo[]; fretboardDemos: FretboardDemo[] }
 export type ExerciseType = 'multiple_choice' | 'fretboard_click' | 'interval_input' | 'roman_numeral_input'
 
+export type ExerciseResult = { exerciseId: string; lessonId: string; correct: boolean }
+
 export type QuizSeed = { prompt: string; options: string[]; answer: number; explanation: string }
 
 export type Exercise = {
@@ -253,6 +255,26 @@ export const lessons: Lesson[] = [
     ],
   },
 ]
+
+// 课程交互数据：每节课独立的声音演示与指板演示
+// 使用者：App.tsx LessonPage 读取 interaction 字段，lessonInteractions 作为 fallback
+export const lessonInteractions: Record<string, LessonInteraction> = {
+  'sound-basics': { audioDemos: [{ id: 'pitch', title: '音高对比', mode: 'sequential', notes: ['C3', 'C4'] }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C'], displayMode: 'note' }] },
+  'note-names': { audioDemos: [{ id: 'chromatic', title: '半音阶 12 音', mode: 'sequential', notes: ['C4', 'C♯4', 'D4', 'D♯4', 'E4', 'F4', 'F♯4', 'G4', 'G♯4', 'A4', 'A♯4', 'B4'], tempo: 200 }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], displayMode: 'note' }] },
+  'whole-half': { audioDemos: [{ id: 'st', title: '半音与全音', mode: 'sequential', notes: ['E4', 'F4', 'F♯4', 'G4'] }], fretboardDemos: [{ root: 'C', highlightedNotes: ['E', 'F', 'F♯', 'G'], displayMode: 'interval' }] },
+  'open-strings': { audioDemos: [{ id: 'strings', title: '六根空弦', mode: 'sequential', notes: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'] }], fretboardDemos: [{ root: 'E', highlightedNotes: ['E', 'A', 'D', 'G', 'B'], displayMode: 'note' }] },
+  'fretboard-map': { audioDemos: [{ id: 'fret', title: '五弦逐品', mode: 'sequential', notes: ['A2', 'A♯2', 'B2', 'C3', 'C♯3', 'D3'] }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C'], displayMode: 'note' }] },
+  'octave-shapes': { audioDemos: [{ id: 'oct', title: '八度', mode: 'sequential', notes: ['E2', 'E3', 'E4'] }], fretboardDemos: [{ root: 'E', highlightedNotes: ['E'], displayMode: 'note' }] },
+  'pulse-bpm': { audioDemos: [{ id: 'bpm', title: '60 BPM', mode: 'rhythm', notes: ['C4'], tempo: 60 }], fretboardDemos: [] },
+  'meter-values': { audioDemos: [{ id: '44', title: '4/4 拍', mode: 'rhythm', notes: ['C4', 'C4', 'C4', 'C4'], tempo: 80 }], fretboardDemos: [] },
+  'subdivision': { audioDemos: [{ id: '8th', title: '八分音符', mode: 'rhythm', notes: ['C4', 'C4', 'C4', 'C4', 'C4', 'C4', 'C4', 'C4'], tempo: 100 }], fretboardDemos: [] },
+  'interval-distance': { audioDemos: [{ id: 'M3', title: '大三度 C→E', mode: 'sequential', notes: ['C4', 'E4'] }, { id: 'm3', title: '小三度 C→E♭', mode: 'sequential', notes: ['C4', 'E♭4'] }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C', 'E', 'E♭'], displayMode: 'interval' }] },
+  'thirds-fifths': { audioDemos: [{ id: 'maj', title: '大三和弦骨架', mode: 'sequential', notes: ['C4', 'E4', 'G4'] }, { id: 'min', title: '小三和弦骨架', mode: 'sequential', notes: ['C4', 'E♭4', 'G4'] }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C', 'E', 'G'], displayMode: 'interval' }] },
+  'interval-fretboard': { audioDemos: [{ id: 'neck', title: '同弦音程', mode: 'sequential', notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4'] }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C', 'D', 'E', 'F', 'G', 'A'], displayMode: 'interval' }] },
+  'major-scale': { audioDemos: [{ id: 'C-maj', title: 'C 大调音阶', mode: 'sequential', notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'], tempo: 180 }], fretboardDemos: [{ root: 'C', highlightedNotes: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], displayMode: 'degree' }] },
+  'minor-scale': { audioDemos: [{ id: 'A-min', title: 'A 小调音阶', mode: 'sequential', notes: ['A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5'], tempo: 180 }], fretboardDemos: [{ root: 'A', highlightedNotes: ['A', 'B', 'C', 'D', 'E', 'F', 'G'], displayMode: 'degree' }] },
+  'pentatonic': { audioDemos: [{ id: 'pent', title: 'A 小调五声', mode: 'sequential', notes: ['A4', 'C5', 'D5', 'E5', 'G5', 'A5'], tempo: 180 }], fretboardDemos: [{ root: 'A', highlightedNotes: ['A', 'C', 'D', 'E', 'G'], displayMode: 'degree' }] },
+}
 
 const quizExercises: Exercise[] = lessons.flatMap((lesson) => lesson.quiz.map((quiz, index) => ({
   ...quiz, id: `${lesson.id}-q${index + 1}`, lessonId: lesson.id, type: 'multiple_choice' as const, difficulty: index < 2 ? 1 : 2,
