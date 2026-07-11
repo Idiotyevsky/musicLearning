@@ -23,7 +23,7 @@ export function RomanNumeralInputExercise({ exercise, onResult, onNext }: Props)
   }
 
   return (
-    <div className="exercise-card">
+    <div className="exercise-card" data-testid="exercise-question">
       <div className="quiz-meta"><span>级数分析 · 输入罗马数字</span></div>
       <h3>{exercise.prompt}</h3>
 
@@ -31,6 +31,7 @@ export function RomanNumeralInputExercise({ exercise, onResult, onNext }: Props)
         罗马数字级数（如：I、vi、V7、vii°）
         <input
           className="text-input"
+          data-testid="roman-answer-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="输入罗马数字..."
@@ -46,7 +47,7 @@ export function RomanNumeralInputExercise({ exercise, onResult, onNext }: Props)
           </button>
           )
         : (
-          <div className={`explanation ${result?.correct ? 'success' : 'error'}`}>
+          <div className={`explanation ${result?.correct ? 'success' : 'error'}`} data-testid="exercise-feedback">
             <b>{result?.correct ? <><Check /> 回答正确！</> : '级数不准确。'}</b>
             <p>{result?.feedback}</p>
             <button className="button primary compact" onClick={next}>

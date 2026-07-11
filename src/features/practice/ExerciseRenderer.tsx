@@ -25,7 +25,7 @@ function MCQuestion({ exercise, onResult, onNext }: { exercise: Exercise; onResu
   }
 
   return (
-    <div className="inline-quiz">
+    <div className="inline-quiz" data-testid="exercise-question">
       <div className="quiz-meta"><span>选择题</span></div>
       <h3>{exercise.prompt}</h3>
       <div className="option-grid">
@@ -43,7 +43,7 @@ function MCQuestion({ exercise, onResult, onNext }: { exercise: Exercise; onResu
       </div>
       {submitted
         ? (
-          <div className={`explanation ${isCorrect ? 'success' : 'error'}`}>
+          <div className={`explanation ${isCorrect ? 'success' : 'error'}`} data-testid="exercise-feedback">
             <b>{isCorrect ? '回答正确！' : '还差一步。'}</b>
             <p>{exercise.explanation}</p>
             <button className="button primary compact" onClick={onNext}>

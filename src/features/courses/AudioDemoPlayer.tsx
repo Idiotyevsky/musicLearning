@@ -1,20 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pause, Play } from 'lucide-react'
-import { noteToPitchClass } from '../../theory'
 import { playPitch } from '../../components/Fretboard'
 import type { AudioDemo } from '../../data/catalog'
-
-type ParsedNote = { pitchClass: number; octave: number }
-
-function parseNoteWithOctave(note: string): ParsedNote {
-  // match: letter, optional accidental, octave number
-  const match = note.trim().match(/^([A-Ga-g])([#♯b♭]?)(-?\d+)$/)
-  if (!match) throw new Error(`无法解析音名：${note}`)
-  const [, letter, accidental] = match
-  const octave = Number(match[3])
-  const normalized = `${letter.toUpperCase()}${accidental.replace('♯', '#').replace('♭', 'b')}`
-  return { pitchClass: noteToPitchClass(normalized), octave }
-}
+import { parseNoteWithOctave, buildAudioSchedule, getScheduleEndMs } from './audioUtils'
 
 function playNamedNote(note: string, duration = 0.5) {
   const parsed = parseNoteWithOctave(note)
@@ -41,58 +29,34 @@ export function AudioDemoPlayer({ demo }: Props) {
     return () => clearAllTimeouts()
   }, [])
 
-  const playSequential = () => {
-    const notes = demo.notes ?? []
-    notes.forEach((note, index) => {
-      const id = window.setTimeout(() => {
-        playNamedNote(note, 0.45)
-        if (index === notes.length - 1) setPlaying(false)
-      }, index * 550)
-      timeouts.current.push(id)
-    })
-  }
-
-  const playSimultaneous = () => {
-    const notes = demo.notes ?? []
-    notes.forEach((note) => playNamedNote(note, 1))
-    setPlaying(false)
-  }
-
-  const playRhythm = () => {
-    const tempo = demo.tempo ?? 60
-    const subdivision = demo.subdivision ?? 1
-    const notes = demo.notes?.length ? demo.notes : ['C4', 'C4', 'C4', 'C4']
-    const beatMs = 60000 / tempo
-    const stepMs = beatMs / subdivision
-    notes.forEach((note, index) => {
-      const id = window.setTimeout(() => {
-        playNamedNote(note, 0.1)
-        if (index === notes.length - 1) setPlaying(false)
-      }, index * stepMs)
-      timeouts.current.push(id)
-    })
-  }
-
   const playDemo = () => {
     stopCurrentDemo()
+    const notes = demo.notes ?? []
+    if (notes.length === 0) return
+
+    const schedule = buildAudioSchedule({
+      mode: demo.mode,
+      notes,
+      tempo: demo.tempo,
+      subdivision: demo.subdivision,
+    })
+
     setPlaying(true)
 
-    switch (demo.mode) {
-      case 'single': {
-        const note = demo.notes?.[0]
-        if (note) playNamedNote(note, 0.7)
-        setPlaying(false)
-        break
-      }
-      case 'sequential':
-        playSequential()
-        break
-      case 'simultaneous':
-        playSimultaneous()
-        break
-      case 'rhythm':
-        playRhythm()
-        break
+    schedule.forEach((item) => {
+      const id = window.setTimeout(() => {
+        playNamedNote(item.note, item.durationSeconds)
+      }, item.delayMs)
+      timeouts.current.push(id)
+    })
+
+    // 按计划总时长自动结束播放状态
+    const endMs = getScheduleEndMs(schedule)
+    if (endMs > 0) {
+      const finishId = window.setTimeout(() => setPlaying(false), endMs)
+      timeouts.current.push(finishId)
+    } else {
+      setPlaying(false)
     }
   }
 
@@ -103,9 +67,10 @@ export function AudioDemoPlayer({ demo }: Props) {
         onClick={playing ? stopCurrentDemo : playDemo}
       >
         {playing ? <Pause size={14} /> : <Play size={14} />}
-        {' '}{demo.title}
+        {' '}{playing ? '停止序列' : demo.title}
       </button>
       {demo.description && <small>{demo.description}</small>}
+      {playing && <small className="muted">停止序列会取消尚未播放的音，当前音会自然结束。</small>}
     </div>
   )
 }

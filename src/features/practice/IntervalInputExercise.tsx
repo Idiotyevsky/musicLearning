@@ -29,7 +29,7 @@ export function IntervalInputExercise({ exercise, onResult, onNext }: Props) {
   }
 
   return (
-    <div className="exercise-card">
+    <div className="exercise-card" data-testid="exercise-question">
       <div className="quiz-meta"><span>音程计算 · 输入音程名称</span></div>
       <h3>{exercise.prompt}</h3>
 
@@ -51,6 +51,7 @@ export function IntervalInputExercise({ exercise, onResult, onNext }: Props) {
         音程名称（如：大三度、纯五度、M3、P5）
         <input
           className="text-input"
+          data-testid="interval-answer-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="输入音程名称..."
@@ -66,7 +67,7 @@ export function IntervalInputExercise({ exercise, onResult, onNext }: Props) {
           </button>
           )
         : (
-          <div className={`explanation ${result?.correct ? 'success' : 'error'}`}>
+          <div className={`explanation ${result?.correct ? 'success' : 'error'}`} data-testid="exercise-feedback">
             <b>{result?.correct ? <><Check /> 回答正确！</> : '音程名称不准确。'}</b>
             <p>{result?.feedback}</p>
             <button className="button primary compact" onClick={next}>
