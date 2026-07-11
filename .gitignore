@@ -10,3 +10,4 @@ playwright-report
 artifacts-*.png
 *.local
 *.log
+CLAUDE.md\nFIX_REPORT_*.md\n.claude/
