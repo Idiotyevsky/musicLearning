@@ -5,9 +5,9 @@ import { playPitch } from '../../components/Fretboard'
 import { noteToPitchClass } from '../../theory'
 import { scoreIntervalInput } from './exerciseScoring'
 
-type Props = { exercise: Exercise; onResult: (correct: boolean) => void }
+type Props = { exercise: Exercise; onResult: (correct: boolean) => void; onNext: () => void }
 
-export function IntervalInputExercise({ exercise, onResult }: Props) {
+export function IntervalInputExercise({ exercise, onResult, onNext }: Props) {
   const [input, setInput] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{ correct: boolean; feedback: string } | null>(null)
@@ -25,9 +25,7 @@ export function IntervalInputExercise({ exercise, onResult }: Props) {
   }
 
   const next = () => {
-    setInput('')
-    setSubmitted(false)
-    setResult(null)
+    onNext()
   }
 
   return (

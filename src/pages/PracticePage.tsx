@@ -86,6 +86,7 @@ function PracticePage() {
                 <b>{(index % (items.length || 1)) + 1} / {items.length || 1}</b>
               </div>
               <ExerciseRenderer
+                key={currentExercise.id}
                 lessonId={currentExercise.lessonId}
                 exercise={currentExercise}
                 onResult={handleResult}

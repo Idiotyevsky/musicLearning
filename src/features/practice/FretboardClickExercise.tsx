@@ -4,9 +4,9 @@ import type { Exercise } from '../../data/catalog'
 import { Fretboard, playPitch, type FretPosition } from '../../components/Fretboard'
 import { noteToPitchClass } from '../../theory'
 
-type Props = { exercise: Exercise; onResult: (correct: boolean) => void }
+type Props = { exercise: Exercise; onResult: (correct: boolean) => void; onNext: () => void }
 
-export function FretboardClickExercise({ exercise, onResult }: Props) {
+export function FretboardClickExercise({ exercise, onResult, onNext }: Props) {
   const [selected, setSelected] = useState<FretPosition[]>([])
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{ correct: boolean; feedback: string } | null>(null)
@@ -71,7 +71,7 @@ export function FretboardClickExercise({ exercise, onResult }: Props) {
           <div className={`explanation ${result?.correct ? 'success' : 'error'}`}>
             <b>{result?.correct ? <><Check /> 回答正确！</> : '位置不准确，再试一次。'}</b>
             <p>{result?.feedback}</p>
-            <button className="button primary compact" onClick={() => { setSelected([]); setSubmitted(false); setResult(null) }}>
+            <button className="button primary compact" onClick={() => onNext()}>
               下一题 <ArrowRight />
             </button>
           </div>

@@ -70,13 +70,13 @@ export function ExerciseRenderer({ lessonId, exercise, onResult, onNext }: Props
       return <MCQuestion exercise={exercise} onResult={handleResult} onNext={onNext} />
 
     case 'fretboard_click':
-      return <FretboardClickExercise exercise={exercise} onResult={(correct) => { handleResult(correct); onNext() }} />
+      return <FretboardClickExercise exercise={exercise} onResult={handleResult} onNext={onNext} />
 
     case 'interval_input':
-      return <IntervalInputExercise exercise={exercise} onResult={(correct) => { handleResult(correct); onNext() }} />
+      return <IntervalInputExercise exercise={exercise} onResult={handleResult} onNext={onNext} />
 
     case 'roman_numeral_input':
-      return <RomanNumeralInputExercise exercise={exercise} onResult={(correct) => { handleResult(correct); onNext() }} />
+      return <RomanNumeralInputExercise exercise={exercise} onResult={handleResult} onNext={onNext} />
 
     default:
       return <div className="exercise-card"><p className="muted">此题型暂不支持。</p></div>

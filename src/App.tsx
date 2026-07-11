@@ -28,6 +28,7 @@ import AdminPage from './pages/AdminPage'
 import { CircleOfFifthsPanel } from './features/theory-lab/CircleOfFifthsPanel'
 import { ExerciseRenderer } from './features/practice/ExerciseRenderer'
 import type { ExerciseResult } from './data/catalog'
+import { AudioDemoPlayer } from './features/courses/AudioDemoPlayer'
 
 function App() {
   return (
@@ -71,6 +72,7 @@ function LessonExerciseBlock({ lessonId }: { lessonId: string }) {
 
   return (
     <ExerciseRenderer
+      key={current.id}
       lessonId={lessonId}
       exercise={current}
       onResult={handleResult}
@@ -100,7 +102,7 @@ function LessonPage() {
   const research = getKnowledgeForLesson(lesson.id)
   const lessonSteps: { label: string; content: ReactNode }[] = [
     { label: '核心问题', content: <div className="question-card step-card"><span>本课核心问题</span><h2>{lesson.coreQuestion}</h2><p>先不用急着记答案。带着这个问题完成后面的声音、解释与指板验证。</p></div> },
-    { label: '声音演示', content: <section className="step-panel"><span className="overline">先听，再解释</span><h2>{audioDemos.length ? audioDemos[0].title : '听一听声音的关系'}</h2><p>{audioDemos.length ? (audioDemos[0].description ?? '声音只是入口，下一步会用公式说明你听到的距离。') : '先播放根音，再播放它上方的参照音。声音只是入口，下一步会用公式说明你听到的距离。'}</p><div className="sound-buttons">{audioDemos.length ? audioDemos.map((demo) => { const notes = demo.notes ?? []; return <button key={demo.id} className="button secondary" onClick={() => { if (demo.mode === 'sequential' && notes.length) { notes.forEach((n, i) => setTimeout(() => playPitch(noteToPitchClass(n), 4, 0.6), i * (demo.tempo ? 60000 / demo.tempo : 400))) } else if (notes.length) { notes.forEach((n) => playPitch(noteToPitchClass(n), 4, 1.2)) } }}><Play size={14} /> {demo.title}</button> }) : <><button className="button primary" onClick={() => playPitch(noteToPitchClass(root))}><Volume2 /> 播放根音 {root}</button><button className="button secondary" onClick={() => { playPitch(noteToPitchClass(root)); setTimeout(() => playPitch((noteToPitchClass(root) + 7) % 12), 500) }}><Play /> 播放根音与纯五度</button></>}</div><div className="formula-card"><span>本课公式</span><b>{lesson.formula}</b></div></section> },
+    { label: '声音演示', content: <section className="step-panel"><span className="overline">先听，再解释</span><h2>{audioDemos.length ? audioDemos[0].title : '听一听声音的关系'}</h2><p>{audioDemos.length ? (audioDemos[0].description ?? '声音只是入口，下一步会用公式说明你听到的距离。') : '本课暂无声音演示'}</p><div className="sound-buttons">{audioDemos.length ? audioDemos.map((demo) => <AudioDemoPlayer key={demo.id} demo={demo} />) : <p className="muted">本课暂无声音演示</p>}</div><div className="formula-card"><span>本课公式</span><b>{lesson.formula}</b></div></section> },
     { label: '乐理解释', content: <section className="step-panel"><span className="overline">从规律推导</span><h2>{lesson.sections[0].title}</h2><p>{lesson.sections[0].content}</p><div className="formula-card"><span>核心公式</span><b>{lesson.formula}</b></div></section> },
     { label: '指板验证', content: <section className="step-panel content-wide"><span className="overline">把抽象关系放回吉他</span><h2>在指板上验证</h2><p>{lesson.sections[2].content}</p><Fretboard root={root} notes={highlighted} compact /></section> },
     { label: '吉他案例', content: <section className="step-panel"><span className="overline">真实应用</span><h2>{lesson.sections[1].title}</h2><p>{lesson.sections[1].content}</p><div className="application-callout"><Guitar /><div><b>练琴时这样做</b><span>先说出根音与关系，再弹形状；换一个起点重复推导，确认自己理解的是规律而不是位置。</span></div></div></section> },

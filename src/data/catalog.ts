@@ -2,7 +2,7 @@ export type LessonSection = { type: 'explanation' | 'example' | 'fretboard' | 'e
 
 export type AudioDemo = {
   id: string; title: string; mode: 'single' | 'sequential' | 'simultaneous' | 'rhythm'
-  notes?: string[]; intervals?: string[]; tempo?: number; description?: string
+  notes?: string[]; intervals?: string[]; tempo?: number; subdivision?: 1 | 2 | 4; description?: string
 }
 
 export type FretboardDemo = {
