@@ -22,13 +22,12 @@ type LearningContextValue = LearningState & {
   getDueReviews: () => string[]; updateReview: (lessonId: string, correct: boolean) => void;
 }
 
-const REVIEW_INTERVALS = [1, 3, 7, 14, 30] // 连续正确次数对应的间隔天数
-
-function calcNextReview(correctStreak: number, fromDate: string): string {
-  const days = REVIEW_INTERVALS[Math.min(correctStreak, REVIEW_INTERVALS.length - 1)]
-  const d = new Date(fromDate)
-  d.setDate(d.getDate() + (correctStreak >= 0 ? days : 1))
-  return d.toISOString()
+function reviewDelayDays(correct: boolean, streak: number): number {
+  if (!correct) return 1       // 答错：1 天后复习
+  if (streak === 1) return 3   // 首次答对：3 天后
+  if (streak === 2) return 7   // 连续 2 次答对：7 天后
+  if (streak === 3) return 14  // 连续 3 次答对：14 天后
+  return 30                     // 连续 4 次以上：30 天后
 }
 
 const initial: LearningState = { completed: [], attempts: [], bookmarks: [], lastLesson: 'sound-basics', reviews: {} }
@@ -64,6 +63,8 @@ export function LearningProvider({ children }: { children: ReactNode }) {
       const prev = s.reviews[lessonId] ?? { lessonId, lastReviewedAt: null, nextReviewAt: null, correctStreak: 0, incorrectCount: 0, mastery: 0 }
       const now = new Date().toISOString()
       const streak = correct ? prev.correctStreak + 1 : 0
+      const d = new Date(now)
+      d.setDate(d.getDate() + reviewDelayDays(correct, streak))
       return {
         ...s,
         reviews: {
@@ -71,7 +72,7 @@ export function LearningProvider({ children }: { children: ReactNode }) {
           [lessonId]: {
             ...prev,
             lastReviewedAt: now,
-            nextReviewAt: calcNextReview(correct ? streak - 1 : -1, now),
+            nextReviewAt: d.toISOString(),
             correctStreak: streak,
             incorrectCount: prev.incorrectCount + (correct ? 0 : 1),
             mastery: Math.round((prev.mastery * 0.7) + (correct ? 30 : 0)),

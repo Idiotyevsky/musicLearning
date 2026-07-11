@@ -8,7 +8,21 @@ type Props = { exercise: Exercise; onResult: (correct: boolean) => void }
 export function RomanNumeralInputExercise({ exercise, onResult }: Props) {
   const [input, setInput] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const result = submitted ? scoreRomanNumeral(exercise, input) : null
+  const [result, setResult] = useState<{ correct: boolean; feedback: string } | null>(null)
+
+  const submit = () => {
+    if (submitted || !input.trim()) return
+    const r = scoreRomanNumeral(exercise, input)
+    setResult(r)
+    setSubmitted(true)
+    onResult(r.correct) // 立即保存，不是等到下一题
+  }
+
+  const next = () => {
+    setInput('')
+    setSubmitted(false)
+    setResult(null)
+  }
 
   return (
     <div className="exercise-card">
@@ -23,13 +37,13 @@ export function RomanNumeralInputExercise({ exercise, onResult }: Props) {
           onChange={(e) => setInput(e.target.value)}
           placeholder="输入罗马数字..."
           disabled={submitted}
-          onKeyDown={(e) => { if (e.key === 'Enter' && input.trim()) setSubmitted(true) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && input.trim()) submit() }}
         />
       </label>
 
       {!submitted
         ? (
-          <button className="button primary" disabled={!input.trim()} onClick={() => setSubmitted(true)}>
+          <button className="button primary" disabled={!input.trim()} onClick={submit}>
             提交答案
           </button>
           )
@@ -37,7 +51,7 @@ export function RomanNumeralInputExercise({ exercise, onResult }: Props) {
           <div className={`explanation ${result?.correct ? 'success' : 'error'}`}>
             <b>{result?.correct ? <><Check /> 回答正确！</> : '级数不准确。'}</b>
             <p>{result?.feedback}</p>
-            <button className="button primary compact" onClick={() => { setInput(''); setSubmitted(false); onResult(result?.correct ?? false) }}>
+            <button className="button primary compact" onClick={next}>
               下一题 <ArrowRight />
             </button>
           </div>

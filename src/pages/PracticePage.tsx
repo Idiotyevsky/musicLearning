@@ -57,9 +57,9 @@ function PracticePage() {
   const pool = scope === 'mistakes'
     ? exercises.filter((e) => missedIds.has(e.id))
     : scope === 'today'
-      ? (todayReview.length ? todayReview : exercises.slice(0, 8))
+      ? todayReview
       : exercises
-  const items = pool.length ? pool : []
+  const items = pool
   const currentExercise = items.length ? exercises.find((e) => e.id === items[index % items.length].id) ?? exercises[0] : null
 
   const handleResult = (result: ExerciseResult) => {

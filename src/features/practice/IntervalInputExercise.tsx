@@ -10,12 +10,25 @@ type Props = { exercise: Exercise; onResult: (correct: boolean) => void }
 export function IntervalInputExercise({ exercise, onResult }: Props) {
   const [input, setInput] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const result = submitted ? scoreIntervalInput(exercise, input) : null
+  const [result, setResult] = useState<{ correct: boolean; feedback: string } | null>(null)
 
-  // 从 prompt 解析起始音和目标音（格式："C 到 E 之间相隔几个半音？"）
   const noteMatch = exercise.prompt.match(/([A-G](?:♯|♭)?)\s*到\s*([A-G](?:♯|♭)?)/)
   const fromNote = noteMatch?.[1]
   const toNote = noteMatch?.[2]
+
+  const submit = () => {
+    if (submitted || !input.trim()) return
+    const r = scoreIntervalInput(exercise, input)
+    setResult(r)
+    setSubmitted(true)
+    onResult(r.correct) // 立即保存
+  }
+
+  const next = () => {
+    setInput('')
+    setSubmitted(false)
+    setResult(null)
+  }
 
   return (
     <div className="exercise-card">
@@ -44,13 +57,13 @@ export function IntervalInputExercise({ exercise, onResult }: Props) {
           onChange={(e) => setInput(e.target.value)}
           placeholder="输入音程名称..."
           disabled={submitted}
-          onKeyDown={(e) => { if (e.key === 'Enter' && input.trim()) setSubmitted(true) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && input.trim()) submit() }}
         />
       </label>
 
       {!submitted
         ? (
-          <button className="button primary" disabled={!input.trim()} onClick={() => setSubmitted(true)}>
+          <button className="button primary" disabled={!input.trim()} onClick={submit}>
             提交答案
           </button>
           )
@@ -58,7 +71,7 @@ export function IntervalInputExercise({ exercise, onResult }: Props) {
           <div className={`explanation ${result?.correct ? 'success' : 'error'}`}>
             <b>{result?.correct ? <><Check /> 回答正确！</> : '音程名称不准确。'}</b>
             <p>{result?.feedback}</p>
-            <button className="button primary compact" onClick={() => { setInput(''); setSubmitted(false); onResult(result?.correct ?? false) }}>
+            <button className="button primary compact" onClick={next}>
               下一题 <ArrowRight />
             </button>
           </div>
