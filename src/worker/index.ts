@@ -4,7 +4,12 @@
  * MVP 状态说明：
  * - 当前前端 MVP 使用 LocalStorage 存储所有用户数据，不调用本 API。
  * - 本 API 是为后续登录与跨设备同步准备的兼容层。
- * - 写入接口默认禁用（ENABLE_USER_API !== 'true'），仅保留只读端点。
+ * - 所有用户私有接口默认禁用（ENABLE_USER_API !== 'true'），仅保留公开只读端点。
+ *
+ * 当前默认禁用的端点（受 protectUserApi 保护）：
+ *   GET  /api/projects
+ *   POST /api/projects
+ *   POST /api/progress
  *
  * 正式启用前必须完成：
  * 1. 接入身份认证（Clerk / Auth0 / Cloudflare Access 等）
@@ -38,10 +43,10 @@ app.use('/api/*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }))
 
-// 写入保护：MVP 默认禁用用户私有接口；在 wrangler.jsonc 中设置 ENABLE_USER_API = "true" 以启用
-const protectWrite = async (c: any, next: any) => {
+// 用户数据保护：MVP 默认禁用所有用户私有接口；在 wrangler.jsonc 中设置 ENABLE_USER_API = "true" 以启用
+const protectUserApi = async (c: any, next: any) => {
   if (c.env.ENABLE_USER_API !== 'true') {
-    return c.json({ error: 'user_api_disabled_in_mvp', message: 'MVP 使用 LocalStorage，用户 API 默认关闭。' }, 403)
+    return c.json({ error: 'user_api_disabled_in_mvp', message: '当前为本地游客模式，不支持账户系统与跨设备同步。用户私有 API 默认关闭。' }, 503)
   }
   return next()
 }
@@ -63,7 +68,7 @@ app.get('/api/lessons/:slug', async (c) => {
 })
 
 const progressSchema = z.object({ userId: z.string().min(1), lessonId: z.string().min(1), status: z.enum(['started', 'completed']), mastery: z.number().min(0).max(100) })
-app.post('/api/progress', protectWrite, zValidator('json', progressSchema), async (c) => {
+app.post('/api/progress', protectUserApi, zValidator('json', progressSchema), async (c) => {
   const data = c.req.valid('json'); const now = new Date().toISOString()
   await c.env.DB.prepare(`INSERT INTO learning_progress (user_id, lesson_id, status, mastery, last_studied_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, lesson_id) DO UPDATE SET status=excluded.status, mastery=excluded.mastery, last_studied_at=excluded.last_studied_at, updated_at=excluded.updated_at`)
@@ -72,7 +77,7 @@ app.post('/api/progress', protectWrite, zValidator('json', progressSchema), asyn
 })
 
 const projectSchema = z.object({ id: z.string(), userId: z.string(), title: z.string().min(1).max(120), duration: z.number().nonnegative().max(600), bpm: z.number().positive().max(400).nullable(), keyTonic: z.string().nullable(), keyMode: z.string().nullable(), result: z.unknown() })
-app.post('/api/projects', protectWrite, zValidator('json', projectSchema), async (c) => {
+app.post('/api/projects', protectUserApi, zValidator('json', projectSchema), async (c) => {
   const p = c.req.valid('json'); const now = new Date().toISOString()
   const count = await c.env.DB.prepare('SELECT COUNT(*) AS count FROM transcription_projects WHERE user_id = ?').bind(p.userId).first<{ count: number }>()
   if ((count?.count ?? 0) >= 5) return c.json({ error: 'project_limit_reached' }, 429)
@@ -81,7 +86,7 @@ app.post('/api/projects', protectWrite, zValidator('json', projectSchema), async
   return c.json({ ok: true, id: p.id }, 201)
 })
 
-app.get('/api/projects', async (c) => {
+app.get('/api/projects', protectUserApi, async (c) => {
   const userId = c.req.query('user_id'); if (!userId) return c.json({ error: 'user_id_required' }, 400)
   const rows = await c.env.DB.prepare('SELECT * FROM transcription_projects WHERE user_id = ? ORDER BY updated_at DESC LIMIT 5').bind(userId).all()
   return c.json(rows.results)

@@ -1,4 +1,16 @@
 export type LessonSection = { type: 'explanation' | 'example' | 'fretboard' | 'exercise'; title: string; content: string }
+
+export type AudioDemo = {
+  id: string; title: string; mode: 'single' | 'sequential' | 'simultaneous' | 'rhythm'
+  notes?: string[]; intervals?: string[]; tempo?: number; description?: string
+}
+
+export type FretboardDemo = {
+  root?: string; highlightedNotes?: string[]; displayMode: 'note' | 'degree' | 'interval'
+  description?: string
+}
+
+export type LessonInteraction = { audioDemos: AudioDemo[]; fretboardDemos: FretboardDemo[] }
 export type ExerciseType = 'multiple_choice' | 'fretboard_click' | 'interval_input' | 'roman_numeral_input'
 
 export type QuizSeed = { prompt: string; options: string[]; answer: number; explanation: string }
@@ -16,12 +28,16 @@ export type Exercise = {
   targetNote?: string
   /** 指板点击题：参考调 */
   targetContext?: string
+  /** 音程输入题：标准答案（如"大三度"） */
+  intervalAnswer?: string
+  /** 罗马数字输入题：标准答案（如"vi"） */
+  romanAnswer?: string
 }
 
 export type Lesson = {
   id: string; moduleId: string; slug: string; title: string; summary: string; minutes: number;
   objective: string; prerequisite?: string; coreQuestion: string; formula: string; status: 'published';
-  sections: LessonSection[]; mistakes: string[]; quiz: QuizSeed[];
+  sections: LessonSection[]; mistakes: string[]; quiz: QuizSeed[]; interaction?: LessonInteraction;
 }
 export type CourseModule = { id: string; index: number; title: string; subtitle: string; color: string }
 
@@ -243,16 +259,26 @@ const quizExercises: Exercise[] = lessons.flatMap((lesson) => lesson.quiz.map((q
 })))
 
 const extraExercises: Exercise[] = [
-  // 指板点击题：在指板上找到指定音
-  { id: 'fretboard-find-c', lessonId: 'fretboard-map', type: 'fretboard_click', difficulty: 1, prompt: '在指板上点击 C 音的位置（五弦三品或六弦八品均可）', options: ['正确位置', '错误位置'], answer: 0, explanation: '五弦三品是 C，六弦八品也是 C。两个八度位置均正确。', targetNote: 'C', targetContext: 'C' },
-  { id: 'fretboard-find-g', lessonId: 'fretboard-map', type: 'fretboard_click', difficulty: 1, prompt: '在指板上点击 G 音的位置（六弦三品）', options: ['正确位置', '错误位置'], answer: 0, explanation: '六弦空弦 E → 一品 F → 二品 F♯ → 三品 G。', targetNote: 'G', targetContext: 'C' },
-  // 音程输入题
-  { id: 'interval-input-c-e', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'C 到 E 之间相隔几个半音？', options: ['4'], answer: 0, explanation: 'C→C♯→D→D♯→E 共 4 个半音，构成大三度。' },
-  { id: 'interval-input-c-g', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'C 到 G 之间相隔几个半音？', options: ['7'], answer: 0, explanation: 'C 到 G 相隔 7 个半音，构成纯五度。' },
-  // 罗马数字分析题
-  { id: 'roman-c-major-g', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，G 和弦的级数是？', options: ['V', 'IV', 'I', 'vi'], answer: 0, explanation: 'C 大调音阶第 5 级是 G，和弦性质为大三和弦，因此是 V 级。' },
-  { id: 'roman-c-major-am', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，Am 和弦的级数是？', options: ['vi', 'ii', 'iii', 'IV'], answer: 0, explanation: 'A 是 C 大调第 6 级，小三和弦，因此是 vi 级。' },
-  { id: 'roman-g-major-d', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'G 大调中，D 和弦的级数是？', options: ['V', 'IV', 'I', 'vi'], answer: 0, explanation: 'G 大调音阶为 G A B C D E F♯，D 是第 5 级，大三和弦，因此是 V 级。' },
+  // === 指板点击题 (5 题) ===
+  { id: 'fret-find-c', lessonId: 'fretboard-map', type: 'fretboard_click', difficulty: 1, prompt: '在指板上点击 C 音的位置（五弦三品或六弦八品）', options: [], answer: 0, explanation: '五弦三品是 C，六弦八品也是 C。', targetNote: 'C', targetContext: 'C' },
+  { id: 'fret-find-g', lessonId: 'fretboard-map', type: 'fretboard_click', difficulty: 1, prompt: '在指板上点击 G 音的位置（六弦三品）', options: [], answer: 0, explanation: '六弦空弦 E → 一品 F → 二品 F♯ → 三品 G。', targetNote: 'G', targetContext: 'C' },
+  { id: 'fret-find-e', lessonId: 'open-strings', type: 'fretboard_click', difficulty: 1, prompt: '在指板上找到 E 音（一弦或六弦空弦，或二弦五品）', options: [], answer: 0, explanation: '一弦和六弦空弦都是 E，二弦五品也是 E。', targetNote: 'E', targetContext: 'C' },
+  { id: 'fret-find-a', lessonId: 'open-strings', type: 'fretboard_click', difficulty: 1, prompt: '在指板上找到 A 音（五弦空弦，或三弦二品）', options: [], answer: 0, explanation: '五弦空弦是 A，三弦二品也是 A。', targetNote: 'A', targetContext: 'C' },
+  { id: 'fret-find-d', lessonId: 'open-strings', type: 'fretboard_click', difficulty: 1, prompt: '在指板上找到 D 音（四弦空弦，或二弦三品）', options: [], answer: 0, explanation: '四弦空弦是 D，二弦三品也是 D。', targetNote: 'D', targetContext: 'C' },
+
+  // === 音程输入题 (5 题) ===
+  { id: 'int-c-e', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'C 到 E 是什么音程？', options: [], answer: 0, explanation: '字母跨 C-D-E 三度，实际距离 4 半音，因此是大三度。', intervalAnswer: '大三度' },
+  { id: 'int-c-g', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'C 到 G 是什么音程？', options: [], answer: 0, explanation: 'C 到 G 相隔 7 个半音，构成纯五度。', intervalAnswer: '纯五度' },
+  { id: 'int-e-f', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'E 到 F 是什么音程？', options: [], answer: 0, explanation: 'E-F 只有 1 个半音，字母距离为二度，因此是小二度。', intervalAnswer: '小二度' },
+  { id: 'int-c-f', lessonId: 'thirds-fifths', type: 'interval_input', difficulty: 2, prompt: 'C 到 F 是什么音程？', options: [], answer: 0, explanation: '字母跨 C-D-E-F 四度，实际距离 5 半音，因此是纯四度。', intervalAnswer: '纯四度' },
+  { id: 'int-a-c', lessonId: 'thirds-fifths', type: 'interval_input', difficulty: 2, prompt: 'A 到 C 是什么音程？', options: [], answer: 0, explanation: '字母跨 A-B-C 三度，实际距离 3 半音，因此是小三度。', intervalAnswer: '小三度' },
+
+  // === 罗马数字输入题 (5 题) ===
+  { id: 'rn-c-g', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，G 和弦的级数是？', options: [], answer: 0, explanation: 'G 是 C 大调第 5 级，大三和弦，因此是 V。', romanAnswer: 'V' },
+  { id: 'rn-c-am', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，Am 和弦的级数是？', options: [], answer: 0, explanation: 'A 是 C 大调第 6 级，小三和弦，因此是 vi。', romanAnswer: 'vi' },
+  { id: 'rn-g-d', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'G 大调中，D 和弦的级数是？', options: [], answer: 0, explanation: 'D 是 G 大调第 5 级，大三和弦，因此是 V。', romanAnswer: 'V' },
+  { id: 'rn-c-f', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，F 和弦的级数是？', options: [], answer: 0, explanation: 'F 是 C 大调第 4 级，大三和弦，因此是 IV。', romanAnswer: 'IV' },
+  { id: 'rn-a-dm', lessonId: 'minor-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'A 小调中，Dm 和弦的级数是？', options: [], answer: 0, explanation: 'D 是 A 小调第 4 级，小三和弦，因此是 iv。', romanAnswer: 'iv' },
 ]
 
 export const exercises: Exercise[] = [...quizExercises, ...extraExercises]

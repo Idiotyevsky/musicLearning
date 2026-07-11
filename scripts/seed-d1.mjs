@@ -41,7 +41,7 @@ lines.push('')
 // course_modules
 for (const m of modules) {
   lines.push(
-    `INSERT OR IGNORE INTO course_modules (id, slug, title, description, order_index, status) VALUES (${esc(m.id)}, ${esc(m.id)}, ${esc(m.title)}, ${esc(m.subtitle)}, ${m.index}, 'published');`,
+    `INSERT OR REPLACE INTO course_modules (id, slug, title, description, order_index, status) VALUES (${esc(m.id)}, ${esc(m.id)}, ${esc(m.title)}, ${esc(m.subtitle)}, ${m.index}, 'published');`,
   )
 }
 lines.push('')
@@ -55,7 +55,7 @@ for (const l of lessons) {
     quiz: l.quiz,
   })
   lines.push(
-    `INSERT OR IGNORE INTO lessons (id, module_id, slug, title, summary, level, estimated_minutes, content_json, order_index, status, version, created_at, updated_at) VALUES (${esc(l.id)}, ${esc(l.moduleId)}, ${esc(l.slug)}, ${esc(l.title)}, ${esc(l.summary)}, 'beginner', ${l.minutes}, ${esc(content)}, ${lessons.indexOf(l)}, 'published', 1, '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z');`,
+    `INSERT OR REPLACE INTO lessons (id, module_id, slug, title, summary, level, estimated_minutes, content_json, order_index, status, version, created_at, updated_at) VALUES (${esc(l.id)}, ${esc(l.moduleId)}, ${esc(l.slug)}, ${esc(l.title)}, ${esc(l.summary)}, 'beginner', ${l.minutes}, ${esc(content)}, ${lessons.indexOf(l)}, 'published', 1, '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z');`,
   )
 }
 lines.push('')
@@ -64,7 +64,7 @@ lines.push('')
 for (const l of lessons) {
   if (l.prerequisite) {
     lines.push(
-      `INSERT OR IGNORE INTO lesson_prerequisites (lesson_id, prerequisite_lesson_id) VALUES (${esc(l.id)}, ${esc(l.prerequisite)});`,
+      `INSERT OR REPLACE INTO lesson_prerequisites (lesson_id, prerequisite_lesson_id) VALUES (${esc(l.id)}, ${esc(l.prerequisite)});`,
     )
   }
 }
@@ -72,11 +72,17 @@ lines.push('')
 
 // exercises
 for (const e of exercises) {
-  const prompt = JSON.stringify({ text: e.prompt, type: 'multiple_choice' })
+  const prompt = JSON.stringify({ text: e.prompt, type: e.type })
   const answer = JSON.stringify({ index: e.answer })
   const explanation = JSON.stringify({ text: e.explanation })
+  const metadata = JSON.stringify({
+    targetNote: e.targetNote ?? null,
+    targetContext: e.targetContext ?? null,
+    intervalAnswer: e.intervalAnswer ?? null,
+    romanAnswer: e.romanAnswer ?? null,
+  })
   lines.push(
-    `INSERT OR IGNORE INTO exercises (id, lesson_id, type, prompt_json, answer_json, explanation_json, difficulty, status) VALUES (${esc(e.id)}, ${esc(e.lessonId)}, 'multiple_choice', ${esc(prompt)}, ${esc(answer)}, ${esc(explanation)}, 1, 'published');`,
+    `INSERT OR REPLACE INTO exercises (id, lesson_id, type, prompt_json, answer_json, explanation_json, metadata_json, difficulty, status) VALUES (${esc(e.id)}, ${esc(e.lessonId)}, ${esc(e.type)}, ${esc(prompt)}, ${esc(answer)}, ${esc(explanation)}, ${esc(metadata)}, ${e.difficulty}, 'published');`,
   )
 }
 lines.push('')
@@ -92,7 +98,7 @@ for (const s of songCases) {
     tags: s.tags,
   })
   lines.push(
-    `INSERT OR IGNORE INTO song_cases (id, slug, title, artist, key_tonic, key_mode, content_json, status, created_at, updated_at) VALUES (${esc(s.id)}, ${esc(s.id)}, ${esc(s.title)}, ${esc(s.artist)}, ${esc(s.key)}, ${esc(s.mode)}, ${esc(content)}, 'published', '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z');`,
+    `INSERT OR REPLACE INTO song_cases (id, slug, title, artist, key_tonic, key_mode, content_json, status, created_at, updated_at) VALUES (${esc(s.id)}, ${esc(s.id)}, ${esc(s.title)}, ${esc(s.artist)}, ${esc(s.key)}, ${esc(s.mode)}, ${esc(content)}, 'published', '2026-07-11T00:00:00Z', '2026-07-11T00:00:00Z');`,
   )
 }
 

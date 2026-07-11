@@ -1,13 +1,37 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 type Attempt = { exerciseId: string; lessonId: string; correct: boolean; at: string }
-type LearningState = { completed: string[]; attempts: Attempt[]; bookmarks: string[]; lastLesson: string }
+
+export type ReviewState = {
+  lessonId: string
+  lastReviewedAt: string | null
+  nextReviewAt: string | null
+  correctStreak: number
+  incorrectCount: number
+  mastery: number
+}
+
+type LearningState = {
+  completed: string[]; attempts: Attempt[]; bookmarks: string[]; lastLesson: string
+  reviews: Record<string, ReviewState>
+}
+
 type LearningContextValue = LearningState & {
   completeLesson: (id: string) => void; recordAttempt: (attempt: Omit<Attempt, 'at'>) => void;
   toggleBookmark: (id: string) => void; setLastLesson: (id: string) => void; masteryFor: (lessonId: string) => number;
+  getDueReviews: () => string[]; updateReview: (lessonId: string, correct: boolean) => void;
 }
 
-const initial: LearningState = { completed: [], attempts: [], bookmarks: [], lastLesson: 'sound-basics' }
+const REVIEW_INTERVALS = [1, 3, 7, 14, 30] // 连续正确次数对应的间隔天数
+
+function calcNextReview(correctStreak: number, fromDate: string): string {
+  const days = REVIEW_INTERVALS[Math.min(correctStreak, REVIEW_INTERVALS.length - 1)]
+  const d = new Date(fromDate)
+  d.setDate(d.getDate() + (correctStreak >= 0 ? days : 1))
+  return d.toISOString()
+}
+
+const initial: LearningState = { completed: [], attempts: [], bookmarks: [], lastLesson: 'sound-basics', reviews: {} }
 const LearningContext = createContext<LearningContextValue | null>(null)
 
 export function LearningProvider({ children }: { children: ReactNode }) {
@@ -30,6 +54,31 @@ export function LearningProvider({ children }: { children: ReactNode }) {
       const total = attempts.reduce((sum, _, i) => sum + i + 1, 0)
       return Math.round((weighted / total) * 100)
     },
+    getDueReviews: () => {
+      const now = new Date().toISOString()
+      return Object.entries(state.reviews)
+        .filter(([, r]) => !r.nextReviewAt || r.nextReviewAt <= now)
+        .map(([lessonId]) => lessonId)
+    },
+    updateReview: (lessonId, correct) => setState((s) => {
+      const prev = s.reviews[lessonId] ?? { lessonId, lastReviewedAt: null, nextReviewAt: null, correctStreak: 0, incorrectCount: 0, mastery: 0 }
+      const now = new Date().toISOString()
+      const streak = correct ? prev.correctStreak + 1 : 0
+      return {
+        ...s,
+        reviews: {
+          ...s.reviews,
+          [lessonId]: {
+            ...prev,
+            lastReviewedAt: now,
+            nextReviewAt: calcNextReview(correct ? streak - 1 : -1, now),
+            correctStreak: streak,
+            incorrectCount: prev.incorrectCount + (correct ? 0 : 1),
+            mastery: Math.round((prev.mastery * 0.7) + (correct ? 30 : 0)),
+          },
+        },
+      }
+    }),
   }), [state])
   return <LearningContext.Provider value={value}>{children}</LearningContext.Provider>
 }

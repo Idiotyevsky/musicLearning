@@ -13,20 +13,29 @@ function PracticePage() {
   const missedIds = new Set(learning.attempts.filter((a) => !a.correct).map((a) => a.exerciseId))
 
   const todayReview = useMemo(() => {
-    const recentMistakes = exercises.filter((e) => missedIds.has(e.id))
-    const lowMasteryLessons = new Set(
-      lessons.filter((l) => learning.masteryFor(l.id) < 50).map((l) => l.id),
+    // 只从用户已开始或已解锁的课程中选题
+    const accessibleLessonIds = new Set(
+      lessons.filter((l) => !l.prerequisite || learning.completed.includes(l.prerequisite)).map((l) => l.id),
+    )
+    const dueLessonIds = new Set(learning.getDueReviews())
+
+    // 优先级：错题 > 到期复习 > 低掌握度
+    const recentMistakes = exercises.filter(
+      (e) => missedIds.has(e.id) && accessibleLessonIds.has(e.lessonId),
+    )
+    const dueExercises = exercises.filter(
+      (e) => dueLessonIds.has(e.lessonId) && !missedIds.has(e.id) && accessibleLessonIds.has(e.lessonId),
     )
     const lowMasteryExercises = exercises.filter(
-      (e) => lowMasteryLessons.has(e.lessonId) && !missedIds.has(e.id),
+      (e) => learning.masteryFor(e.lessonId) < 50 && !missedIds.has(e.id) && !dueLessonIds.has(e.lessonId) && accessibleLessonIds.has(e.lessonId),
     )
-    const combined = [...recentMistakes, ...lowMasteryExercises]
+    const combined = [...recentMistakes, ...dueExercises, ...lowMasteryExercises]
     for (let i = combined.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [combined[i], combined[j]] = [combined[j], combined[i]]
     }
     return combined.slice(0, 8)
-  }, [learning.attempts])
+  }, [learning.attempts, learning.completed, learning.reviews])
 
   const pool = scope === 'mistakes'
     ? exercises.filter((e) => missedIds.has(e.id))
