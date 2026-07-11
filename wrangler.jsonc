@@ -14,7 +14,13 @@
       "database_name": "string-theory-db",
       "database_id": "REPLACE_WITH_DATABASE_ID"
     }
-  ]
+  ],
+  "vars": {
+    "ENABLE_USER_API": "false"
+  }
+  // 设置为 "true" 以启用用户私有 D1 API（需要同时完成身份认证接入）。
+  // MVP 默认使用 LocalStorage，不依赖 D1 用户接口。
+  //
   // MVP 默认不上传音频，因此无需创建 R2。启用云端音频时取消下面配置并创建私有桶：
   // "r2_buckets": [
   //   { "binding": "AUDIO_BUCKET", "bucket_name": "string-theory-audio" }

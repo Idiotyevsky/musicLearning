@@ -46,29 +46,78 @@ Vite 开发地址默认为 `http://localhost:5173`。静态生产文件输出到
 
 ## Cloudflare 部署
 
-1. 在 Cloudflare 创建 D1 数据库：
+### 前置条件
+
+- Node.js 20+
+- Cloudflare 账号，已安装 wrangler CLI：`npm install -g wrangler`
+- 已通过 `npx wrangler login` 登录
+
+### 首次部署步骤
+
+1. **安装依赖并验证本地构建**
+
+   ```bash
+   npm install
+   npm run validate:content
+   npm test
+   npm run build
+   ```
+
+2. **创建 D1 数据库**
 
    ```bash
    npx wrangler d1 create string-theory-db
    ```
 
-2. 把返回的数据库 ID 写入 `wrangler.jsonc` 的 `database_id`。
-3. 应用 migration：
+   记录返回的 `database_id`。
+
+3. **配置 Wrangler**
+
+   将 `wrangler.jsonc` 中的 `REPLACE_WITH_DATABASE_ID` 替换为实际的 `database_id`。
+
+4. **应用数据库迁移**
 
    ```bash
+   # 本地测试
    npx wrangler d1 migrations apply string-theory-db --local
+
+   # 生产环境
    npx wrangler d1 migrations apply string-theory-db --remote
    ```
 
-4. 构建并部署：
+5. **填充课程数据**（可选，前端 MVP 从静态 TypeScript 文件读取数据）
+
+   ```bash
+   node scripts/seed-d1.mjs
+   npx wrangler d1 execute string-theory-db --local --file=seed.sql
+   # 生产环境
+   npx wrangler d1 execute string-theory-db --remote --file=seed.sql
+   ```
+
+6. **构建并部署**
 
    ```bash
    npm run deploy
    ```
 
-部署后 `/api/health` 会返回 Worker 和 D1 状态。静态资源由 Workers Static Assets 提供，未知前端路径回退到单页应用。
+7. **验证**
 
-首版默认使用游客模式，页面功能不依赖 D1；D1 API 是后续登录与跨设备同步的兼容层。没有创建实际 Cloudflare 资源前，不会产生在线地址。
+   访问 `https://<your-project>.<workers-subdomain>.workers.dev/api/health`，确认返回：
+
+   ```json
+   {"ok":true,"service":"string-theory","database":"connected","timestamp":"..."}
+   ```
+
+### 部署检查清单
+
+- [ ] `npm run validate:content` 通过
+- [ ] `npm test` 通过
+- [ ] `npm run build` 无错误
+- [ ] `database_id` 已替换 `REPLACE_WITH_DATABASE_ID`
+- [ ] Migration 已应用到 remote
+- [ ] `/api/health` 返回正常
+
+首版默认使用游客模式，页面功能不依赖 D1；D1 API 是后续登录与跨设备同步的兼容层。没有创建实际 Cloudflare 资源前，不会产生在线地址。写入接口受 `ENABLE_USER_API` 环境变量保护（默认 `"false"`）。
 
 MVP 默认不上传原始音频，所以 `wrangler.jsonc` 中的 R2 配置保持注释。后续启用时先运行 `npx wrangler r2 bucket create string-theory-audio`，再取消 `r2_buckets` 示例配置；桶应保持私有，并通过短时签名 URL 访问。
 

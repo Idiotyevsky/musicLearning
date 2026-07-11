@@ -88,11 +88,13 @@ const CHORD_SHAPES: Record<string, ChordShape> = {
 export interface ParsedChord { root: string; quality: string; bass?: string; symbol: string }
 
 export function parseChord(symbol: string): ParsedChord {
-  const normalized = normalizeAccidentals(symbol).replace(/Δ/g, 'maj').replace(/°/g, 'dim').replace(/ø/g, 'm7b5')
-  const match = normalized.match(/^([A-G](?:♯|♭)?)(maj7|m7b5|dim7|sus2|sus4|add9|m7|m6|dim|aug|maj|m|7|9|6)?(?:\/([A-G](?:♯|♭)?))?$/i)
+  const normalized = normalizeAccidentals(symbol).replace(/Δ/g, 'maj').replace(/°/g, 'dim').replace(/ø/g, 'm7♭5')
+  const match = normalized.match(/^([A-G](?:♯|♭)?)(maj7|m7♭5|dim7|sus2|sus4|add9|m7|m6|dim|aug|maj|m|7|9|6)?(?:\/([A-G](?:♯|♭)?))?$/i)
   if (!match) throw new Error(`暂不支持的和弦：${symbol}`)
   const root = match[1][0].toUpperCase() + match[1].slice(1)
   let quality = match[2] ?? ''
+  // normalizeAccidentals 将 b→♭，这里把品质符号还原为 ASCII 以便匹配 CHORD_SHAPES
+  if (quality) quality = quality.replace(/♭/g, 'b').replace(/♯/g, '#')
   if (quality === 'maj') quality = ''
   if (!CHORD_SHAPES[quality]) throw new Error(`暂不支持的和弦类型：${quality}`)
   return { root, quality, bass: match[3], symbol: `${root}${quality}${match[3] ? `/${match[3]}` : ''}` }
@@ -128,24 +130,55 @@ const MAJOR_ROMANS = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°']
 const MINOR_ROMANS = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII']
 const FUNCTIONS = ['主功能', '下属功能', '主功能', '下属功能', '属功能', '主功能', '属功能']
 
-export function getDiatonicChords(tonic: string, mode: 'major' | 'minor' = 'major') {
+// 调内七和弦（自然大调 / 自然小调）
+const MAJOR_SEVENTH_QUALITIES = ['maj7', 'm7', 'm7', 'maj7', '7', 'm7', 'm7b5']
+const MINOR_SEVENTH_QUALITIES = ['m7', 'm7b5', 'maj7', 'm7', 'm7', 'maj7', '7']
+const MAJOR_SEVENTH_ROMANS = ['Imaj7', 'ii7', 'iii7', 'IVmaj7', 'V7', 'vi7', 'viiø7']
+const MINOR_SEVENTH_ROMANS = ['i7', 'iiø7', 'III△7', 'iv7', 'v7', 'VI△7', 'VII7']
+
+export function isSeventhChordQuality(q: string): boolean {
+  return ['7', 'maj7', 'm7', 'm7b5', 'dim7'].includes(q)
+}
+
+export function getDiatonicChords(tonic: string, mode: 'major' | 'minor' = 'major', sevenths = false) {
   const notes = getScaleNotes(tonic, mode === 'major' ? 'major' : 'naturalMinor')
-  const qualities = mode === 'major' ? MAJOR_TRIADS : MINOR_TRIADS
-  const romans = mode === 'major' ? MAJOR_ROMANS : MINOR_ROMANS
+  const triQualities = mode === 'major' ? MAJOR_TRIADS : MINOR_TRIADS
+  const seventhQualities = mode === 'major' ? MAJOR_SEVENTH_QUALITIES : MINOR_SEVENTH_QUALITIES
+  const triRomans = mode === 'major' ? MAJOR_ROMANS : MINOR_ROMANS
+  const seventhRomans = mode === 'major' ? MAJOR_SEVENTH_ROMANS : MINOR_SEVENTH_ROMANS
+  const qualities = sevenths ? seventhQualities : triQualities
+  const romans = sevenths ? seventhRomans : triRomans
   return notes.map((note, i) => ({ symbol: `${note}${qualities[i]}`, root: note, quality: qualities[i], roman: romans[i], function: FUNCTIONS[i] }))
 }
 
 export function analyzeChordInKey(symbol: string, tonic: string, mode: 'major' | 'minor' = 'major') {
   const chord = parseChord(symbol)
-  const chords = getDiatonicChords(tonic, mode)
-  const degreeIndex = chords.findIndex((candidate) => noteToPitchClass(candidate.root) === noteToPitchClass(chord.root))
-  const exact = degreeIndex >= 0 && chords[degreeIndex].quality === chord.quality.replace('7', '')
-  if (degreeIndex < 0) return { degree: '—', diatonic: false, function: '调外色彩', reason: `${chord.root} 不在该音阶中` }
+  const scaleNotes = getScaleNotes(tonic, mode === 'major' ? 'major' : 'naturalMinor')
+  const triQualities = mode === 'major' ? MAJOR_TRIADS : MINOR_TRIADS
+  const seventhQualities = mode === 'major' ? MAJOR_SEVENTH_QUALITIES : MINOR_SEVENTH_QUALITIES
+  const triRomans = mode === 'major' ? MAJOR_ROMANS : MINOR_ROMANS
+  const seventhRomans = mode === 'major' ? MAJOR_SEVENTH_ROMANS : MINOR_SEVENTH_ROMANS
+
+  const degreeIndex = scaleNotes.findIndex(
+    (note) => noteToPitchClass(note) === noteToPitchClass(chord.root),
+  )
+
+  if (degreeIndex < 0) {
+    return { degree: '—', diatonic: false, function: '调外色彩', reason: `${chord.root} 不在该音阶中` }
+  }
+
+  const isSeventh = isSeventhChordQuality(chord.quality)
+  const diatonic = isSeventh
+    ? seventhQualities[degreeIndex] === chord.quality
+    : triQualities[degreeIndex] === chord.quality
+
+  const degree = isSeventh ? seventhRomans[degreeIndex] : triRomans[degreeIndex]
+
   return {
-    degree: (mode === 'major' ? MAJOR_ROMANS : MINOR_ROMANS)[degreeIndex],
-    diatonic: exact,
+    degree,
+    diatonic,
     function: FUNCTIONS[degreeIndex],
-    reason: exact ? '调内和弦' : '根音在调内，但和弦性质发生了变化',
+    reason: diatonic ? '调内和弦' : '根音在调内，但和弦性质发生了变化',
   }
 }
 

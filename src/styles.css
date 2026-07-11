@@ -156,6 +156,7 @@ main { min-height: 70vh; }
 .module-score { text-align: center; z-index: 1; }.module-score b { display: block; font-size: 22px; }.module-score span { font-size: 9px; }
 .lesson-row { display: grid; grid-template-columns: 40px 1fr 64px 18px; align-items: center; gap: 13px; padding: 17px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; transition: .2s; }
 .lesson-row:hover, .lesson-row.current { border-color: #9eb8ae; transform: translateX(2px); }.lesson-row.current { box-shadow: inset 3px 0 var(--wood); }
+.lesson-row.locked { opacity: .45; cursor: not-allowed; }.lesson-row.locked:hover { transform: none; border-color: var(--line); }
 .lesson-status { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--muted); border-radius: 50%; font-size: 12px; }
 .lesson-status svg { width: 14px; }.lesson-status.done { color: #fff; background: var(--green-2); border-color: var(--green-2); }.lesson-status.doing { color: #fff; background: var(--wood); border-color: var(--wood); }
 .lesson-main small, .lesson-main b, .lesson-main em { display: block; }.lesson-main small { color: var(--muted); font-size: 9px; }.lesson-main b { font-size: 14px; margin: 3px 0; }.lesson-main em { color: var(--muted); font-style: normal; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

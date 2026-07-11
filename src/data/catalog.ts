@@ -1,5 +1,23 @@
 export type LessonSection = { type: 'explanation' | 'example' | 'fretboard' | 'exercise'; title: string; content: string }
+export type ExerciseType = 'multiple_choice' | 'fretboard_click' | 'interval_input' | 'roman_numeral_input'
+
 export type QuizSeed = { prompt: string; options: string[]; answer: number; explanation: string }
+
+export type Exercise = {
+  id: string
+  lessonId: string
+  type: ExerciseType
+  difficulty: number
+  prompt: string
+  options: string[]
+  answer: number
+  explanation: string
+  /** 指板点击题：目标音名 */
+  targetNote?: string
+  /** 指板点击题：参考调 */
+  targetContext?: string
+}
+
 export type Lesson = {
   id: string; moduleId: string; slug: string; title: string; summary: string; minutes: number;
   objective: string; prerequisite?: string; coreQuestion: string; formula: string; status: 'published';
@@ -220,10 +238,24 @@ export const lessons: Lesson[] = [
   },
 ]
 
-export type Exercise = QuizSeed & { id: string; lessonId: string; type: 'multiple_choice'; difficulty: number }
-export const exercises: Exercise[] = lessons.flatMap((lesson) => lesson.quiz.map((quiz, index) => ({
+const quizExercises: Exercise[] = lessons.flatMap((lesson) => lesson.quiz.map((quiz, index) => ({
   ...quiz, id: `${lesson.id}-q${index + 1}`, lessonId: lesson.id, type: 'multiple_choice' as const, difficulty: index < 2 ? 1 : 2,
 })))
+
+const extraExercises: Exercise[] = [
+  // 指板点击题：在指板上找到指定音
+  { id: 'fretboard-find-c', lessonId: 'fretboard-map', type: 'fretboard_click', difficulty: 1, prompt: '在指板上点击 C 音的位置（五弦三品或六弦八品均可）', options: ['正确位置', '错误位置'], answer: 0, explanation: '五弦三品是 C，六弦八品也是 C。两个八度位置均正确。', targetNote: 'C', targetContext: 'C' },
+  { id: 'fretboard-find-g', lessonId: 'fretboard-map', type: 'fretboard_click', difficulty: 1, prompt: '在指板上点击 G 音的位置（六弦三品）', options: ['正确位置', '错误位置'], answer: 0, explanation: '六弦空弦 E → 一品 F → 二品 F♯ → 三品 G。', targetNote: 'G', targetContext: 'C' },
+  // 音程输入题
+  { id: 'interval-input-c-e', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'C 到 E 之间相隔几个半音？', options: ['4'], answer: 0, explanation: 'C→C♯→D→D♯→E 共 4 个半音，构成大三度。' },
+  { id: 'interval-input-c-g', lessonId: 'interval-distance', type: 'interval_input', difficulty: 2, prompt: 'C 到 G 之间相隔几个半音？', options: ['7'], answer: 0, explanation: 'C 到 G 相隔 7 个半音，构成纯五度。' },
+  // 罗马数字分析题
+  { id: 'roman-c-major-g', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，G 和弦的级数是？', options: ['V', 'IV', 'I', 'vi'], answer: 0, explanation: 'C 大调音阶第 5 级是 G，和弦性质为大三和弦，因此是 V 级。' },
+  { id: 'roman-c-major-am', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'C 大调中，Am 和弦的级数是？', options: ['vi', 'ii', 'iii', 'IV'], answer: 0, explanation: 'A 是 C 大调第 6 级，小三和弦，因此是 vi 级。' },
+  { id: 'roman-g-major-d', lessonId: 'major-scale', type: 'roman_numeral_input', difficulty: 2, prompt: 'G 大调中，D 和弦的级数是？', options: ['V', 'IV', 'I', 'vi'], answer: 0, explanation: 'G 大调音阶为 G A B C D E F♯，D 是第 5 级，大三和弦，因此是 V 级。' },
+]
+
+export const exercises: Exercise[] = [...quizExercises, ...extraExercises]
 
 export const songCases = [
   { id: 'morning-road', title: '清晨公路', artist: '弦上乐理原创', key: 'G', mode: 'major' as const, tempo: 92, meter: '4/4', chords: ['G', 'D', 'Em', 'C'], summary: '经典 I–V–vi–IV，稳定与离开不断循环。', tags: ['流行', '初级'] },
