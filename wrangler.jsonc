@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "string-theory",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "string-theory-db",
+      "database_id": "REPLACE_WITH_DATABASE_ID"
+    }
+  ]
+  // MVP 默认不上传音频，因此无需创建 R2。启用云端音频时取消下面配置并创建私有桶：
+  // "r2_buckets": [
+  //   { "binding": "AUDIO_BUCKET", "bucket_name": "string-theory-audio" }
+  // ]
+}

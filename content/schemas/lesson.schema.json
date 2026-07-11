@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://string-theory.example/schemas/lesson.schema.json",
+  "title": "弦上乐理课程",
+  "type": "object",
+  "required": ["id", "moduleId", "slug", "title", "summary", "minutes", "objective", "coreQuestion", "formula", "status", "sections", "quiz"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "moduleId": { "type": "string" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "title": { "type": "string", "minLength": 2 },
+    "summary": { "type": "string", "minLength": 10 },
+    "minutes": { "type": "integer", "minimum": 1, "maximum": 90 },
+    "objective": { "type": "string" },
+    "prerequisite": { "type": "string" },
+    "coreQuestion": { "type": "string" },
+    "formula": { "type": "string" },
+    "status": { "enum": ["draft", "validated", "reviewed", "published", "archived"] },
+    "sections": { "type": "array", "minItems": 4, "items": { "type": "object", "required": ["type", "title", "content"] } },
+    "quiz": { "type": "array", "minItems": 3, "items": { "$ref": "exercise.schema.json" } }
+  },
+  "additionalProperties": true
+}

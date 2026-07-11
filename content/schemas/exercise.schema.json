@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://string-theory.example/schemas/exercise.schema.json",
+  "title": "弦上乐理选择练习",
+  "type": "object",
+  "required": ["prompt", "options", "answer", "explanation"],
+  "properties": {
+    "prompt": { "type": "string", "minLength": 4 },
+    "options": { "type": "array", "minItems": 2, "items": { "type": "string" } },
+    "answer": { "type": "integer", "minimum": 0 },
+    "explanation": { "type": "string", "minLength": 8 }
+  },
+  "additionalProperties": true
+}
